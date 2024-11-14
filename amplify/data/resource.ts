@@ -1,29 +1,53 @@
-import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
+import {type ClientSchema, a, defineData} from "@aws-amplify/backend";
+import {defineStorage} from '@aws-amplify/backend';
 
-/*== STEP 1 ===============================================================
-The section below creates a Todo database table with a "content" field. Try
-adding a new "isDone" field as a boolean. The authorization rule below
-specifies that any user authenticated via an API key can "create", "read",
-"update", and "delete" any "Todo" records.
-=========================================================================*/
-const schema = a.schema({
-  Todo: a
-    .model({
-      content: a.string(),
+export const storage = defineStorage({
+    name: 'fammAmplifyStorage',
+    access: (allow) => ({
+        '*': [
+            allow.guest.to(['read']),
+            allow.entity('identity').to(['read', 'write', 'delete'])
+        ],
     })
-    .authorization((allow) => [allow.publicApiKey()]),
+
+});
+
+const schema = a.schema({
+    Workspace: a
+        .model({
+            workspaceName: a.string().required(),
+            displayName: a.string(),
+            collections: a.hasMany('Collection', 'workspaceName'),
+        })
+        .identifier(['workspaceName'])
+        .authorization((allow) => [allow.publicApiKey()]),
+    Collection: a
+        .model({
+            workspaceName: a.string().required(),
+            collectionName: a.string().required(),
+            kind: a.enum(['component', 'collection']),
+            displayName: a.string(),
+            workspace: a.belongsTo('Workspace', 'workspaceName'),
+        })
+        .identifier(['collectionName', 'workspaceName'])
+        .authorization((allow) => [allow.publicApiKey()]),
+    Todo: a
+        .model({
+            content: a.string(),
+        })
+        .authorization((allow) => [allow.publicApiKey()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
 
 export const data = defineData({
-  schema,
-  authorizationModes: {
-    defaultAuthorizationMode: "apiKey",
-    apiKeyAuthorizationMode: {
-      expiresInDays: 30,
+    schema,
+    authorizationModes: {
+        defaultAuthorizationMode: "apiKey",
+        apiKeyAuthorizationMode: {
+            expiresInDays: 30,
+        },
     },
-  },
 });
 
 /*== STEP 2 ===============================================================
